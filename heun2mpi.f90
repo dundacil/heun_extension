@@ -576,26 +576,3 @@ enddo
 
 call MPI_Finalize(ierr)
 end program mpi_rho_sum
-!
-!Notes:
-!
-!
-!
-! set key autotitle columnhead
-!
-!
-
-!* This assumes rnor(idum) is a user-defined function generating normal-distributed random numbers using idum as the seed (e.g. Box–Muller method or similar).
-!* We re-index rho from ρ(1, -nd\:nd) to a 1D rho\_local(nbin) with index shift: ix + nd + 1.
-!* You can replace the print loop with file I/O if needed.
-
-!To compile:
-
-!mpif90 -O2 -o mpi\_rho mpi\_rho.f90
-
-!To run:
-
-!mpirun -np 4 ./mpi\_rho
-
-!Let me know if you need help adapting rnor, adding MPI I/O, or improving performance.
-
