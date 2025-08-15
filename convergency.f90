@@ -21,8 +21,6 @@ logical :: got
 external rnor
 
 
-! Code rewritten: ialgo 1-5  Ito schemes
-!  ialgo 6-nalgo Stra
 
 real*8 :: f0, f1, f2, g0, g1, g2
 f0(x) = -x*(1.d0 + x*x)
