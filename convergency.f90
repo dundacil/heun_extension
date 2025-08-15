@@ -1,8 +1,8 @@
-program stability
+program convergency
 use mpi
 implicit real*8 (a-h,o-z)
 
-integer, parameter :: nd=150, nbin=2*nd+1, nnd=20, ndd=20, nalgo=17
+integer, parameter :: nd=500, nbin=2*nd+1, nnd=20, ndd=20, nalgo=17
 ! ialgo 1-nito      Ito schemes
 ! ialgo nstra-nalgo Stratonovich schemes
 integer, parameter :: nito = 5, nstra = nito+1, ndh=13,  npoichk=16, nnoise=npoichk*2**ndh
@@ -20,13 +20,7 @@ logical :: got
 
 external rnor
 
-! Function definitions
-!interface
-!function rnor(idum) z
-!integer :: idum
-!real*8 :: rnor
-!end function rnor
-!end interface
+
 ! Code rewritten: ialgo 1-5  Ito schemes
 !  ialgo 6-nalgo Stra
 
@@ -132,6 +126,7 @@ do id = 1,1 !5   ! ipotizziamo 5 intensita` del rumore
          do iw = 1,nskip
             w0 = w0 + noise(iw+(ipoints-1)*ninner*nskip+(inner-1)*nskip)
          enddo
+         !!! copy here the differente schemes from stability or heun2mpi, as needed
          wtot = wtot + w0
          z0 = w0 * d1
          x0 = x0 + dh*f0(x0) + g0(x0) * z0
@@ -182,4 +177,5 @@ enddo
 
 
 call MPI_Finalize(ierr)
-end program stability
+end program convergency
+
