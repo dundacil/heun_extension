@@ -1,4 +1,4 @@
-program mpi_rho_sum
+program heun2
 use mpi
 !USE random_numbers_mod
 implicit real*8 (a-h,o-z)
@@ -971,7 +971,7 @@ enddo
 
 
 call MPI_Finalize(ierr)
-end program mpi_rho_sum
+end program heun2
 
 
 
