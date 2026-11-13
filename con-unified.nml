@@ -1,0 +1,6 @@
+&sim_params
+  scheme = 's2'
+  nave   = 100000
+  ndh0   = 1
+  d0     = 0.05d0
+/
