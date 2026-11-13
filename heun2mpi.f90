@@ -1,6 +1,7 @@
 program heun2
 use mpi
-!USE random_numbers_mod
+use precision_kind_mod, only: dp
+use random_numbers_mod, only: ran2, rnor, init_random_numbers
 implicit real*8 (a-h,o-z)
 
 integer, parameter :: nd=500, nbin=2*nd+1, nnd=20, nalgo=17
@@ -43,6 +44,7 @@ frk(x) = f0(x) + 0.5d0*g0(x)*g1(x)
 call MPI_Init(ierr)
 call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
 call MPI_Comm_size(MPI_COMM_WORLD, size, ierr)
+call init_random_numbers(rank)
 
 root = 0
 pi = 4.d0*dtan(1.d0)
@@ -66,7 +68,7 @@ rho_global = 0.d0
 
 d0 = 17.d-2 ! 21.d-2
 dh = 1.d-2*id
-idum = -17 - 1000*rank   ! Different seed for each rank
+!idum = -17 - 1000*rank   ! Different seed for each rank
 ninner = 10000
 nave = 5000 ! 10000
 jmax = nint(1.d0/dh)   !internal loop
@@ -606,13 +608,19 @@ g3x = g3(x0)
 f0x = f0(x0)
 f1x = f1(x0)
 f2x = f2(x0)
-x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
-   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
-   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
-   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
-   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
-   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
-     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+!x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+!   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+!   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
+!   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
+!   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
+!   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
+!     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+         x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+          z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+          z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 + &
+          f0x*f1x*dh*dh*0.5d0 + g0x*(g1x*f1x+g0x*f2x)*0.5d0*(z1*z2-z3) + &
+          g0x*(f1x*g1x+f0x*g2x)*z3 + f0x*(g1x*g1x+g0x*g2x)*(dh*z1*z1*0.5d0-0.5d0*(z1*z2+z3)) + &
+          g0x*(g1x*g1x*g1x+4*g0x*g1x*g2x+g0x*g0x*g3x)*z1*z1*z1*z1/24.d0
 if (dabs(x0) .gt. xlarge) then
   got = .false.
 
@@ -671,13 +679,19 @@ g3x = g3(x0)
 f0x = f0(x0)
 f1x = f1(x0)
 f2x = f2(x0)
-x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
-   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
-   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
-   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
-   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
-   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
-     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+!x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+!   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+!   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
+!   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
+!   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
+!   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
+!     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+         x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+          z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+          z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 + &
+          f0x*f1x*dh*dh*0.5d0 + g0x*(g1x*f1x+g0x*f2x)*0.5d0*(z1*z2-z3) + &
+          g0x*(f1x*g1x+f0x*g2x)*z3 + f0x*(g1x*g1x+g0x*g2x)*(dh*z1*z1*0.5d0-0.5d0*(z1*z2+z3)) + &
+          g0x*(g1x*g1x*g1x+4*g0x*g1x*g2x+g0x*g0x*g3x)*z1*z1*z1*z1/24.d0
 if (dabs(x0) .gt. xlarge) then
   got = .false.
 
@@ -696,8 +710,8 @@ enddo
 !!!!
 
 !!!!
-ialgo=15  ! One step collocation calcolo gemini
-algo(ialgo) = "Gemi"
+ialgo=15  ! One step collocation
+algo(ialgo) = "OneS"
 aa = 1.d0/(2.d0*d0)
 got = .false.
 
@@ -736,13 +750,19 @@ g3x = g3(x0)
 f0x = f0(x0)
 f1x = f1(x0)
 f2x = f2(x0)
-x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
-   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
-   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
-   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
-   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
-   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
-     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+!x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+!   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+!   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
+!   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
+!   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
+!   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
+!     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+         x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+          z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+          z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 + &
+          f0x*f1x*dh*dh*0.5d0 + g0x*(g1x*f1x+g0x*f2x)*0.5d0*(z1*z2-z3) + &
+          g0x*(f1x*g1x+f0x*g2x)*z3 + f0x*(g1x*g1x+g0x*g2x)*(dh*z1*z1*0.5d0-0.5d0*(z1*z2+z3)) + &
+          g0x*(g1x*g1x*g1x+4*g0x*g1x*g2x+g0x*g0x*g3x)*z1*z1*z1*z1/24.d0
 if (dabs(x0) .gt. xlarge) then
   got = .false.
 
@@ -794,7 +814,7 @@ f1x = frk(x0)
 g1x = g0(x0)
 x1 = x0 + dh*f1x+z1*g1x
 f2x = frk(x1)
-g2x = g0(x0-2.30/3*g1x*(z1+s3))
+g2x = g0(x0-2.d0/3*g1x*(z1+s3))
 g3x = g0(x0+2.d0/9*g1x*(3.d0*z1+s3))
 g4x = g0(x0-20.d0/27.d0*f1x*dh+10.d0/27.d0*(g2x-g1x)*z1-10.d0/27.d0*g2x*s3)
 x0 = x0 +0.5d0*dh*(f1x+f2x)+z1/40.d0*(37.d0*g1x+30.d0*g3x-27.d0*g4x)+&
@@ -850,7 +870,7 @@ f1x = f0(x0)
 g1x = g0(x0)
 x1 = x0 + dh*f1x+z1*g1x
 f2x = f0(x1)
-g2x = g0(x0-2.30/3*g1x*(z1+s3))
+g2x = g0(x0-2.d0/3*g1x*(z1+s3))
 g3x = g0(x0+2.d0/9*g1x*(3.d0*z1+s3))
 g4x = g0(x0-20.d0/27.d0*f1x*dh+10.d0/27.d0*(g2x-g1x)*z1-10.d0/27.d0*g2x*s3)
 x0 = x0 +0.5d0*dh*(f1x+f2x)+z1/40.d0*(37.d0*g1x+30.d0*g3x-27.d0*g4x)+&

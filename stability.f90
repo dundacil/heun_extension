@@ -1,5 +1,7 @@
 program stability
 use mpi
+use precision_kind_mod, only: dp
+use random_numbers_mod, only: ran2, power, rnor, expdev, init_random_numbers
 implicit real*8 (a-h,o-z)
 
 integer, parameter :: nd=150, nbin=2*nd+1, nnd=20, ndd=20, nalgo=17
@@ -16,7 +18,7 @@ character*4 :: algo(nalgo)
 character(len=120) :: fmt_string70
 character(len=120) :: fmt_string71
 
-external rnor
+! external rnor
 
 ! Function definitions
 !interface
@@ -41,7 +43,7 @@ frk(x) = f0(x) + 0.5d0*g0(x)*g1(x)
 call MPI_Init(ierr)
 call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
 call MPI_Comm_size(MPI_COMM_WORLD, size, ierr)
-
+call init_random_numbers(rank)
 root = 0
 fmt_string70=""
 write(fmt_string70, '(A,I0,A)') "(A,1x,A,1x,A,1x,", nalgo, "(A4,1x))"
@@ -69,7 +71,7 @@ do id = 1,nnd
 
 d0 = idd*1.d-2
 dh = 1.d-2*id
-idum = -17 - 1000*rank   ! Different seed for each rank
+!idum = -17 - 1000*rank   ! Different seed for each rank
 tmax = 100.d0  !1000.d0
 ninner = nint(tmax/dh)
 nstable_local = 0
@@ -212,8 +214,7 @@ z0 = w0*d1
 x1 = x0+dh*f0(x0)+g0(x0)*z0 + 0.5d0*z0*z0*g0(x0)*g1(x0)
 x2 = x0+dh*f0(x1)+g0(x1)*z0 - 0.5d0*z0*z0*g0(x1)*g1(x1)
 x0 = 0.5d0*(x1+x2)
-if (dabs(x0) .gt. 
-xlarge) then
+if (dabs(x0) .gt. xlarge) then
 nstable_local(ialgo) = nstable_local(ialgo)+1
 x0 = 0.d0
 endif
@@ -373,13 +374,65 @@ g3x = g3(x0)
 f0x = f0(x0)
 f1x = f1(x0)
 f2x = f2(x0)
-x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
-   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
-   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
-   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
-   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
-   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
-     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+         x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+          z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+          z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 + &
+          f0x*f1x*dh*dh*0.5d0 + g0x*(g1x*f1x+g0x*f2x)*0.5d0*(z1*z2-z3) + &
+          g0x*(f1x*g1x+f0x*g2x)*z3 + f0x*(g1x*g1x+g0x*g2x)*(dh*z1*z1*0.5d0-0.5d0*(z1*z2+z3)) + &
+          g0x*(g1x*g1x*g1x+4*g0x*g1x*g2x+g0x*g0x*g3x)*z1*z1*z1*z1/24.d0
+!x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+!   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+!   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
+!   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
+!   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
+!   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
+!     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+if (dabs(x0) .gt. xlarge) then
+nstable_local(ialgo) = nstable_local(ialgo)+1
+x0 = 0.d0
+endif
+enddo
+enddo
+enddo
+!!!!
+
+!!!!
+ialgo=5  ! One step collocation h^2 come da integrale esatto di Gemini per z3
+algo(ialgo) = "SrO2"
+x0 = 0.d0
+time = 0.d0
+zd2 = dsqrt(dh)/(dsqrt(3.d0))
+zd3 = dh**2/dsqrt(120.d0)
+do i = 1, 1000
+do inner = 1, ninner
+do jj = 1, 10
+time = time + dh
+w1 = rnor(idum)
+w2 = rnor(idum)
+w3 = rnor(idum)
+z1 = w1*d1
+z2 = dh*0.5d0*(z1+w2*zd2)
+z3 = dh*dh*((w1*w1-1.d0)/6.d0-(w2*w2-1)/10+dsqrt(7.d0)/30.d0*w3)
+g0x = g0(x0)
+g1x = g1(x0)
+g2x = g2(x0)
+g3x = g3(x0)
+f0x = f0(x0)
+f1x = f1(x0)
+f2x = f2(x0)
+         x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+          z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+          z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 + &
+          f0x*f1x*dh*dh*0.5d0 + g0x*(g1x*f1x+g0x*f2x)*0.5d0*(z1*z2-z3) + &
+          g0x*(f1x*g1x+f0x*g2x)*z3 + f0x*(g1x*g1x+g0x*g2x)*(dh*z1*z1*0.5d0-0.5d0*(z1*z2+z3)) + &
+          g0x*(g1x*g1x*g1x+4*g0x*g1x*g2x+g0x*g0x*g3x)*z1*z1*z1*z1/24.d0
+!x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+!   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+!   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
+!   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
+!   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
+!   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
+!     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
 if (dabs(x0) .gt. xlarge) then
 nstable_local(ialgo) = nstable_local(ialgo)+1
 x0 = 0.d0
@@ -413,13 +466,19 @@ g3x = g3(x0)
 f0x = f0(x0)
 f1x = f1(x0)
 f2x = f2(x0)
-x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
-   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
-   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
-   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
-   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
-   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
-     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+         x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+          z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+          z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 + &
+          f0x*f1x*dh*dh*0.5d0 + g0x*(g1x*f1x+g0x*f2x)*0.5d0*(z1*z2-z3) + &
+          g0x*(f1x*g1x+f0x*g2x)*z3 + f0x*(g1x*g1x+g0x*g2x)*(dh*z1*z1*0.5d0-0.5d0*(z1*z2+z3)) + &
+          g0x*(g1x*g1x*g1x+4*g0x*g1x*g2x+g0x*g0x*g3x)*z1*z1*z1*z1/24.d0
+!x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+!   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+!   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
+!   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
+!   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
+!   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
+!     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
 if (dabs(x0) .gt. xlarge) then
 nstable_local(ialgo) = nstable_local(ialgo)+1
 x0 = 0.d0
@@ -430,8 +489,8 @@ enddo
 !!!!
 
 !!!!
-ialgo=15  ! One step collocation calcolo gemini
-algo(ialgo) = "Gemi"
+ialgo=15  ! One step collocation 
+algo(ialgo) = "ones"
 x0 = 0.d0
 time = 0.d0
 zd2 = dsqrt(dh)/(dsqrt(3.d0))
@@ -453,13 +512,19 @@ g3x = g3(x0)
 f0x = f0(x0)
 f1x = f1(x0)
 f2x = f2(x0)
-x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
-   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
-   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
-   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
-   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
-   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
-     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+!x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+!   z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+!   z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 &
+!   +0.5d0*dh*dh*f1x*f0x+0.5d0*f1x*g1x*g0x*(z1*z2-z3) &
+!   +0.5d0*f2x*g0x*g0x*(z1*z2-z3) &
+!   +g1x*(g0x*f1x-f0x*g1x)*z3+0.5d0*(g1x*f0x*g1x+g2x*g0x*f0x*0.5d0)*(dh*z1*z1-z1*z2+z3) &
+!     + (g1x*(g1x*g1x*g0x+g2x*g0x*g0x)+g3x*g0x*g0x*g0x)/12.d0*z1*z1*z1*z1 
+         x0 = x0+dh*f0x+g0x*z1+0.5d0*z1*z1*g0x*g1x+&
+          z2*(g0x*f1x-f0x*g1x)+dh*z1*f0x*g1x+&
+          z1*z1*z1*(g1x*g1x+g2x*g0x)*g0x/6.d0 + &
+          f0x*f1x*dh*dh*0.5d0 + g0x*(g1x*f1x+g0x*f2x)*0.5d0*(z1*z2-z3) + &
+          g0x*(f1x*g1x+f0x*g2x)*z3 + f0x*(g1x*g1x+g0x*g2x)*(dh*z1*z1*0.5d0-0.5d0*(z1*z2+z3)) + &
+          g0x*(g1x*g1x*g1x+4*g0x*g1x*g2x+g0x*g0x*g3x)*z1*z1*z1*z1/24.d0
 if (dabs(x0) .gt. xlarge) then
 nstable_local(ialgo) = nstable_local(ialgo)+1
 x0 = 0.d0
@@ -482,15 +547,15 @@ do jj = 1, 10
 time = time + dh
 w1 = rnor(idum)
 z1 = w1*d1
-f1x = frk(x0)
-g1x = g0(x0)
-x1 = x0 + dh*f1x+z1*g1x
-f2x = frk(x1)
-g2x = g0(x0-2.30/3*g1x*(z1+s3))
-g3x = g0(x0+2.d0/9*g1x*(3.d0*z1+s3))
-g4x = g0(x0-20.d0/27.d0*f1x*dh+10.d0/27.d0*(g2x-g1x)*z1-10.d0/27.d0*g2x*s3)
-x0 = x0 +0.5d0*dh*(f1x+f2x)+z1/40.d0*(37.d0*g1x+30.d0*g3x-27.d0*g4x)+&
-    s3/16.d0*(8*g1x+g2x-9*g3x)
+         f1x = frk(x0)
+         g1x = g0(x0)
+         x1 = x0 + dh*f1x+z1*g1x
+         f2x = frk(x1)
+         g2x = g0(x0-2.d0/3*g1x*(z1+s3))
+         g3x = g0(x0+2.d0/9*g1x*(3.d0*z1+s3))
+         g4x = g0(x0-20.d0/27.d0*f1x*dh+10.d0/27.d0*(g2x-g1x)*z1-10.d0/27.d0*g2x*s3)
+         x0 = x0 +0.5d0*dh*(f1x+f2x)+z1/40.d0*(37.d0*g1x+30.d0*g3x-27.d0*g4x)+&
+           s3/16.d0*(8*g1x+g2x-9*g3x)
    
 if (dabs(x0) .gt. xlarge) then
 nstable_local(ialgo) = nstable_local(ialgo)+1
@@ -517,7 +582,7 @@ f1x = f0(x0)
 g1x = g0(x0)
 x1 = x0 + dh*f1x+z1*g1x
 f2x = f0(x1)
-g2x = g0(x0-2.30/3*g1x*(z1+s3))
+g2x = g0(x0-2.d0/3*g1x*(z1+s3))
 g3x = g0(x0+2.d0/9*g1x*(3.d0*z1+s3))
 g4x = g0(x0-20.d0/27.d0*f1x*dh+10.d0/27.d0*(g2x-g1x)*z1-10.d0/27.d0*g2x*s3)
 x0 = x0 +0.5d0*dh*(f1x+f2x)+z1/40.d0*(37.d0*g1x+30.d0*g3x-27.d0*g4x)+&
